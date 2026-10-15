@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Zap, Gauge, AlertTriangle, CheckCircle2, Layers } from 'lucide-react';
+import { Clock, Zap, Gauge, AlertTriangle, Layers, Brain } from 'lucide-react';
 import { StreamSession } from '../../../core/types.js';
 
 interface MetricsSummaryProps {
@@ -30,6 +30,22 @@ export const MetricsSummary: React.FC<MetricsSummaryProps> = ({ session }) => {
             <span className="text-rose-200/90">
               {session.anomalies[0]?.message || 'Tokens arrived in coalesced bursts following long idle pauses.'}
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* Reasoning Info Banner if present */}
+      {session.hasReasoning && (
+        <div className="p-2.5 rounded-xl bg-purple-950/30 border border-purple-800/50 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2 text-purple-300">
+            <Brain className="w-4 h-4 text-purple-400" />
+            <span className="font-semibold">Reasoning Thought Process (CoT):</span>
+            <span className="text-purple-200/80">
+              {session.reasoningTokens} tokens generated in {session.reasoningDurationMs || 0} ms
+            </span>
+          </div>
+          <div className="text-[11px] font-mono text-purple-300 bg-purple-900/40 px-2 py-0.5 rounded border border-purple-700/50">
+            {session.reasoningTokensPerSecond || 0} thinking tok/s
           </div>
         </div>
       )}

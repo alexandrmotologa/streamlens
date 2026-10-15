@@ -1,14 +1,14 @@
-import React from 'react';
-import { Activity, ShieldAlert, Play, Download, Trash2, Cpu } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldAlert, Play, Download, Trash2, FileCode, FileText, Check } from 'lucide-react';
 
 interface NavbarProps {
   connected: boolean;
-  sessions: Array<{ sessionId: string; path: string; totalTokens: number; startTime: number }>;
+  sessions: Array<{ sessionId: string; path: string; totalTokens: number; startTime: number; providerType?: string }>;
   activeSessionId?: string;
   onSelectSession: (id: string) => void;
   onOpenMockModal: () => void;
   onOpenChaosModal: () => void;
-  onExport: (format: 'jsonl' | 'json') => void;
+  onExport: (format: 'jsonl' | 'json' | 'html' | 'markdown') => void;
   onClear: () => void;
 }
 
@@ -22,6 +22,23 @@ export const Navbar: React.FC<NavbarProps> = ({
   onExport,
   onClear
 }) => {
+  const [copiedMd, setCopiedMd] = useState(false);
+
+  const handleCopyMarkdown = async () => {
+    if (!activeSessionId) return;
+    try {
+      const res = await fetch(`/api/sessions/${activeSessionId}/export?format=markdown`);
+      if (res.ok) {
+        const text = await res.text();
+        await navigator.clipboard.writeText(text);
+        setCopiedMd(true);
+        setTimeout(() => setCopiedMd(false), 2000);
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
   return (
     <header className="border-b border-slate-800 bg-[#0f172a]/80 backdrop-blur sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -41,19 +58,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Center: Session Picker */}
+        {/* Center: Session Picker & Export Actions */}
         <div className="flex items-center gap-2">
           <select
             value={activeSessionId || ''}
             onChange={(e) => onSelectSession(e.target.value)}
-            className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-md px-3 py-1.5 focus:outline-none focus:border-cyan-500 max-w-[240px] truncate"
+            className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-md px-3 py-1.5 focus:outline-none focus:border-cyan-500 max-w-[240px] truncate font-mono"
           >
             {sessions.length === 0 ? (
               <option value="">No Active Streams</option>
             ) : (
               sessions.map((s) => (
                 <option key={s.sessionId} value={s.sessionId}>
-                  {s.path} ({s.totalTokens} tokens) - {new Date(s.startTime).toLocaleTimeString()}
+                  {s.sessionId.replace('sess-', '')} ({s.totalTokens} tok • {s.providerType || 'openai'})
                 </option>
               ))
             )}
@@ -62,20 +79,28 @@ export const Navbar: React.FC<NavbarProps> = ({
           {activeSessionId && (
             <div className="flex items-center gap-1">
               <button
-                onClick={() => onExport('jsonl')}
-                title="Export Stream as JSONL"
-                className="px-2.5 py-1.5 text-xs font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-1.5 border border-slate-700 transition"
+                onClick={() => onExport('html')}
+                title="Download Standalone HTML Diagnostic Report"
+                className="px-2.5 py-1.5 text-xs font-medium rounded bg-slate-800 hover:bg-slate-700 text-sky-300 flex items-center gap-1.5 border border-slate-700 transition"
               >
-                <Download className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">JSONL</span>
+                <FileCode className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">HTML Report</span>
               </button>
               <button
-                onClick={() => onExport('json')}
-                title="Export Full Session JSON"
+                onClick={handleCopyMarkdown}
+                title="Copy GitHub Markdown Report to Clipboard"
                 className="px-2.5 py-1.5 text-xs font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-1.5 border border-slate-700 transition"
               >
-                <Download className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">JSON</span>
+                {copiedMd ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <FileText className="w-3.5 h-3.5" />}
+                <span className="hidden lg:inline">{copiedMd ? 'Copied MD' : 'Copy MD'}</span>
+              </button>
+              <button
+                onClick={() => onExport('jsonl')}
+                title="Export Stream as JSONL"
+                className="px-2 py-1.5 text-xs font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center gap-1 border border-slate-700 transition"
+              >
+                <Download className="w-3 h-3" />
+                <span className="hidden xl:inline">JSONL</span>
               </button>
             </div>
           )}
@@ -102,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>Simulate Stream</span>
           </button>
 
-          {/* Chaos Toggle */}
+          {/* Chaos / Breakpoints Toggle */}
           <button
             onClick={onOpenChaosModal}
             className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1.5 transition"

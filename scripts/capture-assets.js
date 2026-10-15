@@ -19,13 +19,27 @@ if (!fs.existsSync(framesDir)) {
 
 const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 
-async function sendRequest(url) {
+async function sendPostRequest(url, data) {
   return new Promise((resolve, reject) => {
-    http.get(url, (res) => {
-      res.on('data', () => {});
-      res.on('end', resolve);
-      res.on('error', reject);
-    });
+    const postData = JSON.stringify(data);
+    const req = http.request(
+      url,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+          Authorization: 'Bearer sk-proj-1234567890abcdef'
+        }
+      },
+      (res) => {
+        res.on('data', () => {});
+        res.on('end', resolve);
+        res.on('error', reject);
+      }
+    );
+    req.write(postData);
+    req.end();
   });
 }
 
@@ -41,16 +55,50 @@ async function main() {
   });
   await proxyServer.start();
 
-  console.log('2. Generating test streams...');
-  // Scenario 1: Tool call
-  await sendRequest('http://127.0.0.1:50096/v1/chat/completions?scenario=tool-call');
-  // Scenario 2: Nginx buffer anomaly
-  await sendRequest('http://127.0.0.1:50096/v1/chat/completions?scenario=nginx-buffered');
-  // Scenario 3: Smooth text
-  await sendRequest('http://127.0.0.1:50096/v1/chat/completions?scenario=smooth');
+  console.log('2. Generating test streams with rich metadata...');
+  // Scenario 1: Tool call with full request body & schemas
+  await sendPostRequest('http://127.0.0.1:50096/v1/chat/completions?scenario=tool-call', {
+    model: 'gpt-4o',
+    messages: [
+      { role: 'system', content: 'You are an internal database agent inspecting user permission tables.' },
+      { role: 'user', content: 'Find all active admin users in the database and return the top 25.' }
+    ],
+    tools: [
+      {
+        type: 'function',
+        function: {
+          name: 'query_database',
+          description: 'Queries internal databases for active user records',
+          parameters: {
+            type: 'object',
+            properties: {
+              table: { type: 'string' },
+              filter: { type: 'object' },
+              limit: { type: 'integer' }
+            },
+            required: ['table', 'filter', 'limit']
+          }
+        }
+      }
+    ]
+  });
+
+  // Scenario 2: DeepSeek reasoning CoT
+  await sendPostRequest('http://127.0.0.1:50096/v1/chat/completions?scenario=deepseek-reasoning', {
+    model: 'deepseek-r1',
+    messages: [
+      { role: 'user', content: 'How do I fix proxy buffering in Nginx when streaming LLM responses?' }
+    ]
+  });
+
+  // Scenario 3: Nginx 4KB buffer anomaly
+  await sendPostRequest('http://127.0.0.1:50096/v1/chat/completions?scenario=nginx-buffered', {
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'user', content: 'Stream a large payload.' }]
+  });
 
   // Allow sessions to finalize
-  await new Promise((r) => setTimeout(r, 1000));
+  await new Promise((r) => setTimeout(r, 1200));
 
   console.log('3. Launching Chrome with puppeteer-core...');
   const browser = await puppeteer.launch({
@@ -81,26 +129,68 @@ async function main() {
 
     // Capture animation frames for animated GIF
     console.log('4. Capturing animation frames for demo GIF...');
-    
-    // Initial frames showing the dashboard overview
-    for (let i = 0; i < 8; i++) {
-      const framePath = path.join(framesDir, `frame_${String(i).padStart(3, '0')}.png`);
+    let frameIdx = 0;
+
+    // Frames 0-5: Waterfall tab overview
+    for (let i = 0; i < 6; i++) {
+      const framePath = path.join(framesDir, `frame_${String(frameIdx++).padStart(3, '0')}.png`);
       await page.screenshot({ path: framePath });
-      await new Promise((r) => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 80));
     }
 
-    // Trigger an active streaming request and capture streaming updates
-    sendRequest('http://127.0.0.1:50096/v1/chat/completions?scenario=tool-call').catch(() => {});
+    // Click "Request & Prompt" tab
+    await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const reqBtn = buttons.find((b) => b.textContent?.includes('Request & Prompt'));
+      reqBtn?.click();
+    });
+    await new Promise((r) => setTimeout(r, 400));
 
-    for (let i = 8; i < 24; i++) {
-      const framePath = path.join(framesDir, `frame_${String(i).padStart(3, '0')}.png`);
+    // Frames: Request inspector view
+    for (let i = 0; i < 6; i++) {
+      const framePath = path.join(framesDir, `frame_${String(frameIdx++).padStart(3, '0')}.png`);
+      await page.screenshot({ path: framePath });
+      await new Promise((r) => setTimeout(r, 80));
+    }
+
+    // Click "Tool Calls" tab
+    await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const toolBtn = buttons.find((b) => b.textContent?.includes('Tool Calls'));
+      toolBtn?.click();
+    });
+    await new Promise((r) => setTimeout(r, 400));
+
+    // Frames: Tool calls view
+    for (let i = 0; i < 6; i++) {
+      const framePath = path.join(framesDir, `frame_${String(frameIdx++).padStart(3, '0')}.png`);
+      await page.screenshot({ path: framePath });
+      await new Promise((r) => setTimeout(r, 80));
+    }
+
+    // Switch back to Waterfall and trigger an active stream
+    await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const waterBtn = buttons.find((b) => b.textContent?.includes('Token Waterfall'));
+      waterBtn?.click();
+    });
+    await new Promise((r) => setTimeout(r, 200));
+
+    // Trigger an active streaming request
+    sendPostRequest('http://127.0.0.1:50096/v1/chat/completions?scenario=tool-call', {
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: 'Stream tool call' }]
+    }).catch(() => {});
+
+    for (let i = 0; i < 10; i++) {
+      const framePath = path.join(framesDir, `frame_${String(frameIdx++).padStart(3, '0')}.png`);
       await page.screenshot({ path: framePath });
       await new Promise((r) => setTimeout(r, 120));
     }
 
     console.log('5. Compiling animated demo GIF with ffmpeg...');
     const gifOutput = path.join(outDir, 'streamlens_demo.gif');
-    const ffmpegCmd = `ffmpeg -y -framerate 8 -i "${path.join(framesDir, 'frame_%03d.png')}" -vf "fps=10,scale=1000:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" "${gifOutput}"`;
+    const ffmpegCmd = `ffmpeg -y -framerate 6 -i "${path.join(framesDir, 'frame_%03d.png')}" -vf "fps=8,scale=1000:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" "${gifOutput}"`;
     execSync(ffmpegCmd, { stdio: 'inherit' });
     console.log('Generated streamlens_demo.gif successfully!');
 

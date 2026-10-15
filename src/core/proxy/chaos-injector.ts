@@ -1,15 +1,47 @@
 import { Transform, TransformCallback } from 'node:stream';
 import { ChaosConfig } from '../types.js';
 
+export interface QueuedChunk {
+  chunk: Buffer;
+  callback: TransformCallback;
+}
+
+export class StreamControllerRegistry {
+  private static controllers: Map<string, ChaosTransformStream> = new Map();
+
+  public static register(sessionId: string, stream: ChaosTransformStream): void {
+    this.controllers.set(sessionId, stream);
+  }
+
+  public static unregister(sessionId: string): void {
+    this.controllers.delete(sessionId);
+  }
+
+  public static get(sessionId: string): ChaosTransformStream | undefined {
+    return this.controllers.get(sessionId);
+  }
+
+  public static getAllActive(): string[] {
+    return Array.from(this.controllers.keys());
+  }
+}
+
 export class ChaosTransformStream extends Transform {
   private config: ChaosConfig;
   private accumulatedBuffer: Buffer = Buffer.alloc(0);
   private tokenCount: number = 0;
   private byteCount: number = 0;
   private isDropped: boolean = false;
+  private sessionId?: string;
 
-  constructor(config: Partial<ChaosConfig> = {}) {
+  // Stepping & Breakpoints state
+  private isSteppingPaused: boolean = false;
+  private pausedQueue: QueuedChunk[] = [];
+  private onStateChange?: (state: { isPaused: boolean; tokenCount: number; queuedCount: number }) => void;
+
+  constructor(config: Partial<ChaosConfig> = {}, sessionId?: string) {
     super();
+    this.sessionId = sessionId;
     this.config = {
       enabled: config.enabled ?? false,
       bufferThresholdBytes: config.bufferThresholdBytes ?? 0,
@@ -17,8 +49,71 @@ export class ChaosTransformStream extends Transform {
       maxJitterMs: config.maxJitterMs ?? 0,
       dropAtToken: config.dropAtToken,
       dropAtByte: config.dropAtByte,
-      initialDelayMs: config.initialDelayMs ?? 0
+      initialDelayMs: config.initialDelayMs ?? 0,
+      steppingMode: config.steppingMode ?? false,
+      pauseAtToken: config.pauseAtToken,
+      pauseOnToolCall: config.pauseOnToolCall ?? false
     };
+
+    if (this.config.steppingMode) {
+      this.isSteppingPaused = true;
+    }
+
+    if (this.sessionId) {
+      StreamControllerRegistry.register(this.sessionId, this);
+    }
+  }
+
+  public setStateChangeHandler(fn: (state: { isPaused: boolean; tokenCount: number; queuedCount: number }) => void): void {
+    this.onStateChange = fn;
+  }
+
+  public pauseStepping(): void {
+    this.isSteppingPaused = true;
+    this.notifyState();
+  }
+
+  public resumeStepping(): void {
+    this.isSteppingPaused = false;
+    this.config.steppingMode = false;
+    // Flush all queued chunks
+    while (this.pausedQueue.length > 0) {
+      const item = this.pausedQueue.shift();
+      if (item && !this.isDropped) {
+        this.push(item.chunk);
+        item.callback();
+      }
+    }
+    this.notifyState();
+  }
+
+  public stepChunk(): boolean {
+    if (this.pausedQueue.length > 0) {
+      const item = this.pausedQueue.shift();
+      if (item && !this.isDropped) {
+        this.push(item.chunk);
+        item.callback();
+        this.notifyState();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public getSteppingStatus(): { isPaused: boolean; tokenCount: number; queuedCount: number } {
+    return {
+      isPaused: this.isSteppingPaused,
+      tokenCount: this.tokenCount,
+      queuedCount: this.pausedQueue.length
+    };
+  }
+
+  private notifyState(): void {
+    const status = this.getSteppingStatus();
+    if (this.onStateChange) {
+      this.onStateChange(status);
+    }
+    this.emit('chaos:state', status);
   }
 
   public override _transform(chunk: Buffer | string, _encoding: BufferEncoding, callback: TransformCallback): void {
@@ -37,16 +132,36 @@ export class ChaosTransformStream extends Transform {
       return;
     }
 
-    // Check mid-stream drop by token count (rough heuristic on double newline or data: prefix)
+    // Check mid-stream drop by token count or breakpoints
     const str = buf.toString('utf-8');
     if (str.includes('data:')) {
       this.tokenCount++;
+
       if (this.config.enabled && this.config.dropAtToken && this.tokenCount >= this.config.dropAtToken) {
         this.isDropped = true;
         this.emit('chaos:drop', { reason: 'token_limit', tokenCount: this.tokenCount });
         this.destroy(new Error('StreamLens Chaos: Simulated mid-stream connection drop by token threshold.'));
         return;
       }
+
+      // Check pause at token breakpoint
+      if (this.config.pauseAtToken && this.tokenCount >= this.config.pauseAtToken && !this.isSteppingPaused) {
+        this.isSteppingPaused = true;
+        this.notifyState();
+      }
+
+      // Check pause on tool call breakpoint
+      if (this.config.pauseOnToolCall && (str.includes('tool_calls') || str.includes('tool_use')) && !this.isSteppingPaused) {
+        this.isSteppingPaused = true;
+        this.notifyState();
+      }
+    }
+
+    // If currently paused in stepping mode, queue chunk
+    if (this.isSteppingPaused) {
+      this.pausedQueue.push({ chunk: buf, callback });
+      this.notifyState();
+      return;
     }
 
     if (!this.config.enabled) {
@@ -74,11 +189,25 @@ export class ChaosTransformStream extends Transform {
   }
 
   public override _flush(callback: TransformCallback): void {
+    if (this.sessionId) {
+      StreamControllerRegistry.unregister(this.sessionId);
+    }
+
     if (this.accumulatedBuffer.length > 0 && !this.isDropped) {
       const remaining = this.accumulatedBuffer;
       this.accumulatedBuffer = Buffer.alloc(0);
       this.push(remaining);
     }
+
+    // Flush any remaining paused chunks if stream ended
+    while (this.pausedQueue.length > 0) {
+      const item = this.pausedQueue.shift();
+      if (item && !this.isDropped) {
+        this.push(item.chunk);
+        item.callback();
+      }
+    }
+
     callback();
   }
 
@@ -98,7 +227,9 @@ export class ChaosTransformStream extends Transform {
         callback();
       }, delayMs);
     } else {
-      this.push(bufferToPush);
+      if (!this.isDropped) {
+        this.push(bufferToPush);
+      }
       callback();
     }
   }

@@ -133,7 +133,22 @@ export const MOCK_SCENARIOS: Record<string, MockStreamScenario> = {
       { delayMs: 40, data: JSON.stringify({ choices: [{ delta: { content: ' about to' } }] }) },
       { delayMs: 40, data: JSON.stringify({ choices: [{ delta: { content: ' terminate' } }] }) },
       { delayMs: 40, data: JSON.stringify({ choices: [{ delta: { content: ' prematurely' } }] }) }
-      // Ends without [DONE] or proper closure
+    ]
+  },
+
+  'deepseek-reasoning': {
+    name: 'deepseek-reasoning',
+    description: 'Dual stream featuring DeepSeek-R1 reasoning thought process followed by answer output',
+    provider: 'openai',
+    events: [
+      { delayMs: 140, data: JSON.stringify({ choices: [{ delta: { reasoning_content: 'Let me think about how reverse proxy buffering works.\n' } }] }) },
+      { delayMs: 45, data: JSON.stringify({ choices: [{ delta: { reasoning_content: '1. Nginx defaults to 4KB buffer for proxied HTTP responses.\n' } }] }) },
+      { delayMs: 40, data: JSON.stringify({ choices: [{ delta: { reasoning_content: '2. With SSE, small chunks get held in memory until 4096 bytes accumulate.\n' } }] }) },
+      { delayMs: 40, data: JSON.stringify({ choices: [{ delta: { reasoning_content: '3. The solution is proxy_buffering off or X-Accel-Buffering: no.\n' } }] }) },
+      { delayMs: 50, data: JSON.stringify({ choices: [{ delta: { content: 'To resolve Nginx SSE proxy buffering, ' } }] }) },
+      { delayMs: 35, data: JSON.stringify({ choices: [{ delta: { content: 'add `proxy_buffering off;` to your location block, ' } }] }) },
+      { delayMs: 35, data: JSON.stringify({ choices: [{ delta: { content: 'or emit the `X-Accel-Buffering: no` response header from your backend.' } }] }) },
+      { delayMs: 30, data: '[DONE]' }
     ]
   }
 };

@@ -39,10 +39,14 @@ Point your application base URL to `http://localhost:50085/v1` and StreamLens tr
 * **Microsecond Arrival Timing:** Captures exact arrival timestamps with microsecond precision, measuring Time to First Token (TTFT), sustained tokens per second (TPS), and inter-token jitter.
 * **Proxy Buffering Anomaly Detection:** Heuristic engine detects when reverse proxies (such as Nginx default 4KB buffers) hold back tokens and flush them in near-zero millisecond bursts.
 * **Streaming Tool-Call JSON Assembler:** Stateful parser reconstructs partial function call JSON on every chunk, producing valid AST structures before the stream finishes and flagging syntax errors.
-* **Deterministic Chaos Simulation:** Injects synthetic proxy buffering (e.g., 4096-byte buffers), artificial jitter (50 to 200ms delays), and mid-stream disconnects to verify client resilience.
-* **Embedded React 19 Web Studio:** Built-in interactive dashboard showing token waterfalls, raw SSE packet logs, reconstructed JSON objects, and live chaos toggles.
-* **Deterministic Mock Server:** Built-in LLM stream simulator (`streamlens mock`) with 5 realistic streaming profiles for offline testing without API keys.
-* **Session Recording and Replay:** Save sessions to `.jsonl` files and replay them at original or altered speeds to reproduce production bugs locally.
+* **Live JSON Schema Conformance:** Asserts streaming arguments against tool parameters defined in the request payload, verifying type contracts and required keys before stream closure.
+* **Reasoning / Chain-of-Thought Dissector:** Separates pre-answer thinking tokens (DeepSeek-R1 `reasoning_content`, `<think>` tags, Claude 3.7 thinking deltas) from output content, tracking separate thinking speed and duration.
+* **Request & Prompt Inspector:** Captures incoming messages, system instructions, generation parameters, and provides one-click "Copy as cURL" and "Copy as fetch()" commands.
+* **Stream Breakpoints & Token Stepper:** Pause streams mid-flight at specific token counts or on tool calls, allowing step-by-step token delivery to debug UI animations.
+* **Session Benchmark Diff:** Compares two sessions side-by-side to highlight latency deltas, throughput variance, and buffering differences between models or proxies.
+* **Deterministic Chaos Simulation:** Injects synthetic proxy buffering (e.g., 4096-byte buffers), artificial jitter (50 to 200ms delays), and mid-stream disconnects.
+* **Embedded React 19 Web Studio:** Built-in interactive dashboard showing token waterfalls, raw SSE packet logs, reconstructed JSON objects, and live controls.
+* **Diagnostic Report Export:** Export sessions as standalone interactive HTML files (offline-ready) or GitHub-formatted Markdown bug reports.
 
 ---
 
@@ -150,12 +154,15 @@ streamlens record "https://api.example.com/stream" --output captured.jsonl
 
 ## Web Studio
 
-The embedded React 19 Studio provides four specialized inspector views:
+The embedded React 19 Studio provides six specialized inspector views:
 
 1. **Token Arrival Waterfall:** Horizontal latency bars showing arrival timing for every token, highlighted by color (green for smooth <40ms, red for stutters >150ms, purple for coalesced bursts).
-2. **Tool-Call Reconstructor:** Live view of partial JSON strings being reassembled chunk-by-chunk into structured objects, showing syntax completeness and JSON schema validity.
-3. **Raw SSE Event Table:** Searchable log of raw event lines, bytes, timestamps, and payload previews.
-4. **Chaos Controls:** Interactive sliders to adjust buffer thresholds, min/max jitter delays, and disconnect thresholds on the fly.
+2. **Request & Prompt Inspector:** Formatted conversation thread bubbles, system instructions, generation parameters, and one-click "Copy as cURL" / "Copy as fetch()".
+3. **Reasoning / Chain-of-Thought Stream:** Dedicated view for pre-answer thinking tokens (DeepSeek-R1, Claude 3.7, o1/o3), measuring thinking velocity vs answer velocity.
+4. **Tool-Call Reconstructor & Schema Validator:** Live view of partial JSON strings being reassembled chunk-by-chunk into structured objects, showing syntax completeness and JSON schema validity.
+5. **Raw SSE Event Table:** Searchable log of raw event lines, bytes, timestamps, and payload previews.
+6. **Session Benchmark Diff:** Side-by-side comparison of two sessions, showing TTFT deltas, throughput variance, and jitter distributions.
+7. **Chaos & Stepper Controls:** Interactive sliders for buffer thresholds, jitter, disconnects, and stream stepping breakpoints.
 
 ---
 

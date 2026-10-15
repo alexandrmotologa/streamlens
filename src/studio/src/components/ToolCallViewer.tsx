@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wrench, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Wrench, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { StreamingToolCall } from '../../../core/types.js';
 
 interface ToolCallViewerProps {
@@ -41,6 +41,30 @@ export const ToolCallViewer: React.FC<ToolCallViewerProps> = ({ toolCalls }) => 
           );
         }
 
+        let schemaBadge = null;
+        if (tc.schemaStatus === 'valid') {
+          schemaBadge = (
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-mono flex items-center gap-1 bg-emerald-950/80 text-emerald-400 border border-emerald-800/80">
+              <ShieldCheck className="w-3 h-3" />
+              Schema Valid
+            </span>
+          );
+        } else if (tc.schemaStatus === 'invalid') {
+          schemaBadge = (
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-mono flex items-center gap-1 bg-rose-950/80 text-rose-400 border border-rose-800/80">
+              <ShieldAlert className="w-3 h-3" />
+              Schema Invalid
+            </span>
+          );
+        } else if (tc.schemaStatus === 'incomplete_valid') {
+          schemaBadge = (
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-mono flex items-center gap-1 bg-sky-950/80 text-sky-400 border border-sky-800/80">
+              <ShieldCheck className="w-3 h-3" />
+              Schema Matches (In-Flight)
+            </span>
+          );
+        }
+
         return (
           <div
             key={tc.toolIndex}
@@ -63,8 +87,23 @@ export const ToolCallViewer: React.FC<ToolCallViewerProps> = ({ toolCalls }) => 
                   )}
                 </div>
               </div>
-              <div>{statusBadge}</div>
+              <div className="flex items-center gap-2">
+                {schemaBadge}
+                {statusBadge}
+              </div>
             </div>
+
+            {/* Schema Errors Warning */}
+            {tc.schemaErrors && tc.schemaErrors.length > 0 && (
+              <div className="px-4 py-2 bg-rose-950/30 border-b border-rose-900/30 text-[11px] text-rose-300 space-y-1">
+                <div className="font-semibold text-rose-400 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> Schema Validation Violations:
+                </div>
+                {tc.schemaErrors.map((err, i) => (
+                  <div key={i} className="pl-4 font-mono">• {err}</div>
+                ))}
+              </div>
+            )}
 
             {/* Content Body */}
             <div className="p-3.5 grid grid-cols-1 lg:grid-cols-2 gap-3 text-xs font-mono">
@@ -86,7 +125,7 @@ export const ToolCallViewer: React.FC<ToolCallViewerProps> = ({ toolCalls }) => 
                 <div className="text-[11px] text-slate-400 font-semibold mb-1.5 flex items-center justify-between">
                   <span>Raw Streaming String Buffer</span>
                   <span className="text-[10px] text-slate-500">
-                    {Buffer.byteLength(tc.accumulatedArgumentJson, 'utf-8')} bytes
+                    {Buffer.byteLength(tc.accumulatedArgumentJson || '', 'utf-8')} bytes
                   </span>
                 </div>
                 <pre className="p-3 rounded-lg bg-slate-950 border border-slate-800 overflow-x-auto text-slate-300 max-h-56">

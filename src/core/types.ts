@@ -1,4 +1,4 @@
-export type ProviderType = 'openai' | 'anthropic' | 'ollama' | 'generic';
+export type ProviderType = 'openai' | 'anthropic' | 'ollama' | 'gemini' | 'generic';
 
 export interface SSEMessage {
   id?: string;
@@ -9,6 +9,8 @@ export interface SSEMessage {
   timestampNs: bigint;
   deltaFromPreviousMs: number;
   isBufferingBurst?: boolean;
+  reasoningDelta?: string;
+  isReasoning?: boolean;
 }
 
 export type BufferAnomalyType = 'nginx-4kb' | 'cloudflare-batch' | 'coalesced-tcp' | 'unknown';
@@ -34,8 +36,37 @@ export interface StreamingToolCall {
   currentParseError?: string;
   deltaCount: number;
   isComplete: boolean;
-  schemaValid?: boolean;
+  schemaStatus?: 'unvalidated' | 'valid' | 'incomplete_valid' | 'invalid';
   schemaErrors?: string[];
+  matchedSchema?: Record<string, unknown>;
+}
+
+export interface RequestMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool' | string;
+  content: string;
+  name?: string;
+  tool_call_id?: string;
+}
+
+export interface ToolDefinition {
+  name: string;
+  description?: string;
+  parameters?: Record<string, unknown>;
+}
+
+export interface RequestDetails {
+  headers: Record<string, string>;
+  bodyRaw?: string;
+  model?: string;
+  messages: RequestMessage[];
+  systemPrompt?: string;
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
+  stream: boolean;
+  tools: ToolDefinition[];
+  curlCommand: string;
+  fetchCode: string;
 }
 
 export interface StreamSession {
@@ -60,6 +91,24 @@ export interface StreamSession {
   toolCalls: StreamingToolCall[];
   completedContent: string;
   providerType: ProviderType;
+
+  // Request & Prompt Details
+  request?: RequestDetails;
+
+  // Reasoning / CoT Metrics
+  reasoningContent: string;
+  hasReasoning: boolean;
+  reasoningTokens: number;
+  answerTokens: number;
+  timeToFirstReasoningTokenMs?: number;
+  reasoningDurationMs?: number;
+  reasoningTokensPerSecond?: number;
+  answerTokensPerSecond?: number;
+
+  // Interactive Stepping / Breakpoint Status
+  isPaused?: boolean;
+  pausedAtToken?: number;
+  pendingBufferedChunksCount?: number;
 }
 
 export interface ChaosConfig {
@@ -70,6 +119,9 @@ export interface ChaosConfig {
   dropAtToken?: number;
   dropAtByte?: number;
   initialDelayMs?: number;
+  steppingMode?: boolean;
+  pauseAtToken?: number;
+  pauseOnToolCall?: boolean;
 }
 
 export interface ProxyServerOptions {
@@ -83,7 +135,7 @@ export interface ProxyServerOptions {
 }
 
 export interface MockStreamScenario {
-  name: 'smooth' | 'nginx-buffered' | 'jitter' | 'tool-call' | 'interrupted';
+  name: 'smooth' | 'nginx-buffered' | 'jitter' | 'tool-call' | 'interrupted' | 'deepseek-reasoning';
   description: string;
   provider: ProviderType;
   events: Array<{

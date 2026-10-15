@@ -5,6 +5,9 @@ import { ProxyForwarder } from '../core/proxy/forwarder.js';
 import { WebSocketHub } from './ws-hub.js';
 import { MOCK_SCENARIOS } from '../core/mock/scenarios.js';
 import { StreamTap } from '../core/proxy/stream-tap.js';
+import { StreamControllerRegistry } from '../core/proxy/chaos-injector.js';
+import { HtmlReportGenerator } from '../core/export/html-report-generator.js';
+import { MarkdownReportGenerator } from '../core/export/markdown-generator.js';
 
 export class ApiRouter {
   private sessions: Map<string, StreamSession> = new Map();
@@ -13,7 +16,9 @@ export class ApiRouter {
     enabled: false,
     bufferThresholdBytes: 4096,
     minJitterMs: 0,
-    maxJitterMs: 0
+    maxJitterMs: 0,
+    steppingMode: false,
+    pauseOnToolCall: false
   };
   private forwarder: ProxyForwarder | null = null;
   private wsHub: WebSocketHub | null = null;
@@ -65,7 +70,7 @@ export class ApiRouter {
 
     // CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE');
     res.setHeader('Access-Control-Allow-Headers', '*');
 
     if (req.method === 'OPTIONS') {
@@ -88,14 +93,120 @@ export class ApiRouter {
         timeToFirstTokenMs: s.timeToFirstTokenMs,
         averageInterTokenDeltaMs: s.averageInterTokenDeltaMs,
         maxTokenJitterMs: s.maxTokenJitterMs,
+        p95TokenJitterMs: s.p95TokenJitterMs,
         bufferingAnomalyDetected: s.bufferingAnomalyDetected,
         anomaliesCount: s.anomalies.length,
         toolCallsCount: s.toolCalls.length,
+        hasReasoning: s.hasReasoning,
+        reasoningTokens: s.reasoningTokens,
         providerType: s.providerType
       }));
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(summary));
+      return true;
+    }
+
+    // GET /api/sessions/diff?a=...&b=...
+    if (pathname === '/api/sessions/diff' && req.method === 'GET') {
+      const idA = parsedUrl.searchParams.get('a');
+      const idB = parsedUrl.searchParams.get('b');
+
+      if (!idA || !idB) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing session parameters ?a=...&b=...' }));
+        return true;
+      }
+
+      const sessionA = this.getSession(idA);
+      const sessionB = this.getSession(idB);
+
+      if (!sessionA || !sessionB) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'One or both sessions not found for comparison' }));
+        return true;
+      }
+
+      const diff = {
+        sessionA: {
+          id: sessionA.sessionId,
+          provider: sessionA.providerType,
+          totalTokens: sessionA.totalTokens,
+          ttftMs: sessionA.timeToFirstTokenMs,
+          tps: sessionA.tokensPerSecond,
+          avgDeltaMs: sessionA.averageInterTokenDeltaMs,
+          p95JitterMs: sessionA.p95TokenJitterMs,
+          anomalies: sessionA.anomalies.length
+        },
+        sessionB: {
+          id: sessionB.sessionId,
+          provider: sessionB.providerType,
+          totalTokens: sessionB.totalTokens,
+          ttftMs: sessionB.timeToFirstTokenMs,
+          tps: sessionB.tokensPerSecond,
+          avgDeltaMs: sessionB.averageInterTokenDeltaMs,
+          p95JitterMs: sessionB.p95TokenJitterMs,
+          anomalies: sessionB.anomalies.length
+        },
+        delta: {
+          ttftMsDiff: sessionB.timeToFirstTokenMs - sessionA.timeToFirstTokenMs,
+          tpsDiff: Number((sessionB.tokensPerSecond - sessionA.tokensPerSecond).toFixed(1)),
+          p95JitterDiff: sessionB.p95TokenJitterMs - sessionA.p95TokenJitterMs
+        }
+      };
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(diff));
+      return true;
+    }
+
+    // Interactive Stepping API
+    // POST /api/sessions/:id/step
+    if (pathname.includes('/step') && req.method === 'POST') {
+      const id = pathname.split('/')[3];
+      const controller = StreamControllerRegistry.get(id);
+      if (!controller) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Active streaming controller not found for session' }));
+        return true;
+      }
+
+      const stepped = controller.stepChunk();
+      const status = controller.getSteppingStatus();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, stepped, ...status }));
+      return true;
+    }
+
+    // POST /api/sessions/:id/resume
+    if (pathname.includes('/resume') && req.method === 'POST') {
+      const id = pathname.split('/')[3];
+      const controller = StreamControllerRegistry.get(id);
+      if (!controller) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Active streaming controller not found for session' }));
+        return true;
+      }
+
+      controller.resumeStepping();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, isPaused: false }));
+      return true;
+    }
+
+    // POST /api/sessions/:id/pause
+    if (pathname.includes('/pause') && req.method === 'POST') {
+      const id = pathname.split('/')[3];
+      const controller = StreamControllerRegistry.get(id);
+      if (!controller) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Active streaming controller not found for session' }));
+        return true;
+      }
+
+      controller.pauseStepping();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, isPaused: true }));
       return true;
     }
 
@@ -125,7 +236,23 @@ export class ApiRouter {
       }
 
       const format = parsedUrl.searchParams.get('format') || 'jsonl';
-      if (format === 'jsonl') {
+      if (format === 'html') {
+        const html = HtmlReportGenerator.generate(session);
+        res.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Content-Disposition': `inline; filename="streamlens-${session.sessionId}.html"`
+        });
+        res.end(html);
+        return true;
+      } else if (format === 'markdown') {
+        const md = MarkdownReportGenerator.generate(session);
+        res.writeHead(200, {
+          'Content-Type': 'text/markdown; charset=utf-8',
+          'Content-Disposition': `inline; filename="streamlens-${session.sessionId}.md"`
+        });
+        res.end(md);
+        return true;
+      } else if (format === 'jsonl') {
         res.writeHead(200, {
           'Content-Type': 'application/x-ndjson',
           'Content-Disposition': `attachment; filename="streamlens-${session.sessionId}.jsonl"`
@@ -170,7 +297,7 @@ export class ApiRouter {
           }
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true, chaos: this.currentChaos }));
-        } catch (err: unknown) {
+        } catch {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Invalid JSON body' }));
         }
@@ -236,7 +363,7 @@ export class ApiRouter {
           const session = this.streamMockScenario(scenarioName);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true, sessionId: session.sessionId, scenario: scenarioName }));
-        } catch (err: unknown) {
+        } catch {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Failed to trigger mock scenario' }));
         }
@@ -276,7 +403,11 @@ export class ApiRouter {
       messages: [],
       toolCalls: [],
       completedContent: '',
-      providerType: scenario.provider
+      providerType: scenario.provider,
+      reasoningContent: '',
+      hasReasoning: false,
+      reasoningTokens: 0,
+      answerTokens: 0
     };
 
     if (this.wsHub) {

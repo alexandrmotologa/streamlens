@@ -1,0 +1,6 @@
+{"event":"message","data":"{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_weather_101\",\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"\"}}]}}]}","byteLength":135,"timestampNs":"1000000000","deltaFromPreviousMs":110}
+{"event":"message","data":"{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"{\\\"location\\\":\"}}]}}]}","byteLength":95,"timestampNs":"1035000000","deltaFromPreviousMs":35}
+{"event":"message","data":"{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\" \\\"San Francisco\\\",\"}}]}}]}","byteLength":102,"timestampNs":"1072000000","deltaFromPreviousMs":37}
+{"event":"message","data":"{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\" \\\"unit\\\": \\\"celsius\\\"}\"}}]}}]}","byteLength":99,"timestampNs":"1106000000","deltaFromPreviousMs":34}
+{"event":"message","data":"{\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}","byteLength":68,"timestampNs":"1135000000","deltaFromPreviousMs":29}
+{"event":"message","data":"[DONE]","byteLength":14,"timestampNs":"1155000000","deltaFromPreviousMs":20}

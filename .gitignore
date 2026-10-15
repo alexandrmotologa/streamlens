@@ -1,0 +1,9 @@
+node_modules/
+dist/
+src/studio/dist/
+.DS_Store
+*.log
+*.tmp
+.env
+.env.local
+coverage/

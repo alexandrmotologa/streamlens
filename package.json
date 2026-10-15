@@ -1,0 +1,61 @@
+{
+  "name": "streamlens",
+  "version": "0.1.0",
+  "description": "Transparent local reverse proxy and Web Studio for inspecting LLM SSE token streams, measuring inter-token jitter, detecting proxy buffering, and reconstructing streaming tool calls.",
+  "author": "Alexandr Motologa",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "streamlens": "bin/streamlens.js"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "build:server": "tsc -p tsconfig.server.json",
+    "build:studio": "vite build --config src/studio/vite.config.ts",
+    "build": "npm run build:server && npm run build:studio",
+    "dev:server": "tsx watch src/cli/index.ts",
+    "dev:studio": "vite src/studio --config src/studio/vite.config.ts",
+    "start": "node bin/streamlens.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "server-sent-events",
+    "sse",
+    "llm-observability",
+    "token-streaming",
+    "reverse-proxy",
+    "event-stream",
+    "partial-json",
+    "chaos-engineering",
+    "stream-dissector"
+  ],
+  "dependencies": {
+    "commander": "^13.1.0",
+    "picocolors": "^1.1.1",
+    "ws": "^8.18.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^22.10.7",
+    "@types/ws": "^8.5.13",
+    "@vitejs/plugin-react": "^4.3.4",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.473.0",
+    "puppeteer-core": "^25.14.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "vitest": "^5.0.4"
+  }
+}

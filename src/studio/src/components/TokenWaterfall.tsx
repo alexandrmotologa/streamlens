@@ -21,12 +21,12 @@ export const TokenWaterfall: React.FC<TokenWaterfallProps> = ({ messages }) => {
 
   return (
     <div className="border border-slate-800 rounded-xl bg-slate-900/60 overflow-hidden">
-      <div className="p-3.5 border-b border-slate-800 flex items-center justify-between">
+      <div className="p-3.5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-xs text-slate-200">Token Arrival Waterfall</span>
           <span className="text-[11px] text-slate-500 font-mono">({messages.length} chunks)</span>
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-slate-400">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400">
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-emerald-400" /> &lt;40ms
           </span>

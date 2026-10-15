@@ -166,8 +166,8 @@ export const SessionDiffViewer: React.FC<SessionDiffViewerProps> = ({ sessions, 
           </div>
 
           {/* Side by Side Comparative Table */}
-          <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
-            <table className="w-full text-left text-xs">
+          <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-x-auto">
+            <table className="w-full text-left text-xs min-w-[500px]">
               <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
                 <tr>
                   <th className="p-3">Metric</th>

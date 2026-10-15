@@ -125,7 +125,7 @@ export const ToolCallViewer: React.FC<ToolCallViewerProps> = ({ toolCalls }) => 
                 <div className="text-[11px] text-slate-400 font-semibold mb-1.5 flex items-center justify-between">
                   <span>Raw Streaming String Buffer</span>
                   <span className="text-[10px] text-slate-500">
-                    {Buffer.byteLength(tc.accumulatedArgumentJson || '', 'utf-8')} bytes
+                    {new TextEncoder().encode(tc.accumulatedArgumentJson || '').length} bytes
                   </span>
                 </div>
                 <pre className="p-3 rounded-lg bg-slate-950 border border-slate-800 overflow-x-auto text-slate-300 max-h-56">

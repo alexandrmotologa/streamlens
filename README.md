@@ -1,21 +1,28 @@
-<div align="center">
-  <img src="docs/images/logo.svg" width="100" height="100" alt="StreamLens Logo" />
-  <h1>StreamLens</h1>
-  <p><strong>Server-Sent Events (SSE) and LLM Token Stream Inspector with Real-Time Tool-Call JSON Reconstruction</strong></p>
+<p align="center">
+  <img src="docs/images/logo.png?raw=true" alt="StreamLens Logo" width="130" style="border-radius: 24px;" />
+</p>
 
-  <p>
-    <a href="#quickstart">Quickstart</a> •
-    <a href="#core-features">Features</a> •
-    <a href="#cli-reference">CLI Commands</a> •
-    <a href="#web-studio">Web Studio</a> •
-    <a href="#architecture">Architecture</a> •
-    <a href="docs/PROXY_BUFFERING_GUIDE.md">Proxy Buffering Guide</a>
-  </p>
-</div>
+<h1 align="center">StreamLens</h1>
+
+<p align="center">
+  <strong>Server-Sent Events (SSE) and LLM Token Stream Inspector with Real-Time Tool-Call JSON Reconstruction</strong>
+</p>
+
+<p align="center">
+  <a href="#quickstart">Quickstart</a> •
+  <a href="#core-features">Features</a> •
+  <a href="#visual-tour">Visual Tour</a> •
+  <a href="#cli-reference">CLI Commands</a> •
+  <a href="#web-studio">Web Studio</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="docs/PROXY_BUFFERING_GUIDE.md">Proxy Buffering Guide</a>
+</p>
 
 ---
 
-![StreamLens Demo](docs/images/streamlens_demo.gif)
+<p align="center">
+  <img src="docs/images/streamlens_demo.gif" alt="StreamLens Live Stream Inspection Demo" width="100%" />
+</p>
 
 ---
 
@@ -163,6 +170,52 @@ The embedded React 19 Studio provides six specialized inspector views:
 5. **Raw SSE Event Table:** Searchable log of raw event lines, bytes, timestamps, and payload previews.
 6. **Session Benchmark Diff:** Side-by-side comparison of two sessions, showing TTFT deltas, throughput variance, and jitter distributions.
 7. **Chaos & Stepper Controls:** Interactive sliders for buffer thresholds, jitter, disconnects, and stream stepping breakpoints.
+
+---
+
+## Visual Tour & Responsive Interface
+
+StreamLens Studio runs locally inside the proxy binary, rendering real-time streaming telemetry and controls across desktop and mobile screen sizes.
+
+### 1. Token Arrival Waterfall & Proxy Anomaly Detection
+
+Inspects inter-token latency spikes, Time to First Token (TTFT), sustained throughput (tokens per second), and automatically flags reverse proxy buffering (such as Nginx 4KB chunk accumulation).
+
+<p align="center">
+  <img src="docs/images/streamlens-overview.png" alt="StreamLens Token Waterfall and Anomaly Detection" width="100%" />
+</p>
+
+### 2. Streaming Tool-Call JSON Assembler & Schema Validation
+
+Visualizes partial JSON strings being reassembled chunk-by-chunk into structured objects in real time. Validates in-flight arguments against registered JSON Schema definitions before the stream finishes.
+
+<p align="center">
+  <img src="docs/images/streamlens-tool-calls.png" alt="StreamLens Real-Time Tool Call Assembly and Schema Validation" width="100%" />
+</p>
+
+### 3. Request Payload & Prompt Inspector
+
+Inspects conversation thread history, system prompts, model parameters, and generation hyperparameters with one-click reproduction commands.
+
+<p align="center">
+  <img src="docs/images/streamlens-request-inspector.png" alt="StreamLens Request and Prompt Inspector" width="100%" />
+</p>
+
+### 4. Benchmark Session Diff Engine
+
+Compares two streaming sessions side-by-side to highlight latency improvements, throughput variance, and jitter distributions between models, prompt variants, or proxy routes.
+
+<p align="center">
+  <img src="docs/images/streamlens-session-diff.png" alt="StreamLens Session Benchmark Diff Viewer" width="100%" />
+</p>
+
+### 5. Mobile & Touchscreen Adaptability
+
+The Studio layout adapts to mobile devices and small viewports (390px to 768px), featuring horizontal tab scrolling, compact telemetry cards, and touch-friendly controls.
+
+<p align="center">
+  <img src="docs/images/streamlens-mobile.png" alt="StreamLens Mobile Responsive View" width="340" style="border-radius: 16px; border: 1px solid #1e293b;" />
+</p>
 
 ---
 

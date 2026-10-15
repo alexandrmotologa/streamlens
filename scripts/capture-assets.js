@@ -98,7 +98,7 @@ async function main() {
   });
 
   // Allow sessions to finalize
-  await new Promise((r) => setTimeout(r, 1200));
+  await new Promise((r) => setTimeout(r, 1500));
 
   console.log('3. Launching Chrome with puppeteer-core...');
   const browser = await puppeteer.launch({
@@ -116,59 +116,114 @@ async function main() {
 
   try {
     const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 800 });
+    await page.setViewport({ width: 1440, height: 900 });
 
     const studioUrl = 'http://127.0.0.1:50096/_studio';
     console.log(`Navigating to ${studioUrl}...`);
     await page.goto(studioUrl, { waitUntil: 'networkidle0', timeout: 15000 });
+    await new Promise((r) => setTimeout(r, 800));
 
-    // Capture main overview screenshot
+    // 1. Capture main overview screenshot (Desktop)
     const overviewPath = path.join(outDir, 'streamlens-overview.png');
     await page.screenshot({ path: overviewPath });
-    console.log('Captured streamlens-overview.png successfully.');
+    console.log('✓ Captured streamlens-overview.png');
 
-    // Capture animation frames for animated GIF
-    console.log('4. Capturing animation frames for demo GIF...');
-    let frameIdx = 0;
+    // 2. Switch to session with tool calls and capture Request & Prompt tab
+    await page.evaluate(() => {
+      const select = document.querySelector('select');
+      if (select && select.options.length > 0) {
+        // The first recorded session was the tool-call session
+        select.selectedIndex = select.options.length - 1; // earliest session
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+    await new Promise((r) => setTimeout(r, 600));
 
-    // Frames 0-5: Waterfall tab overview
-    for (let i = 0; i < 6; i++) {
-      const framePath = path.join(framesDir, `frame_${String(frameIdx++).padStart(3, '0')}.png`);
-      await page.screenshot({ path: framePath });
-      await new Promise((r) => setTimeout(r, 80));
-    }
-
-    // Click "Request & Prompt" tab
     await page.evaluate(() => {
       const buttons = Array.from(document.querySelectorAll('button'));
       const reqBtn = buttons.find((b) => b.textContent?.includes('Request & Prompt'));
       reqBtn?.click();
     });
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 500));
+    const reqPath = path.join(outDir, 'streamlens-request-inspector.png');
+    await page.screenshot({ path: reqPath });
+    console.log('✓ Captured streamlens-request-inspector.png');
 
-    // Frames: Request inspector view
-    for (let i = 0; i < 6; i++) {
-      const framePath = path.join(framesDir, `frame_${String(frameIdx++).padStart(3, '0')}.png`);
-      await page.screenshot({ path: framePath });
-      await new Promise((r) => setTimeout(r, 80));
-    }
-
-    // Click "Tool Calls" tab
+    // 3. Click "Tool Calls" tab and capture screenshot
     await page.evaluate(() => {
       const buttons = Array.from(document.querySelectorAll('button'));
       const toolBtn = buttons.find((b) => b.textContent?.includes('Tool Calls'));
       toolBtn?.click();
     });
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 500));
+    const toolCallsPath = path.join(outDir, 'streamlens-tool-calls.png');
+    await page.screenshot({ path: toolCallsPath });
+    console.log('✓ Captured streamlens-tool-calls.png');
 
-    // Frames: Tool calls view
-    for (let i = 0; i < 6; i++) {
+    // 4. Click "Benchmark Diff" tab and capture screenshot
+    await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const diffBtn = buttons.find((b) => b.textContent?.includes('Benchmark Diff'));
+      diffBtn?.click();
+    });
+    await new Promise((r) => setTimeout(r, 600));
+    const diffPath = path.join(outDir, 'streamlens-session-diff.png');
+    await page.screenshot({ path: diffPath });
+    console.log('✓ Captured streamlens-session-diff.png');
+
+    // 5. Mobile Responsiveness Screenshot (Viewport: 390x844 - iPhone / standard mobile)
+    await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+    // Switch to Waterfall view
+    await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const waterBtn = buttons.find((b) => b.textContent?.includes('Token Waterfall'));
+      waterBtn?.click();
+    });
+    await new Promise((r) => setTimeout(r, 500));
+    const mobilePath = path.join(outDir, 'streamlens-mobile.png');
+    await page.screenshot({ path: mobilePath });
+    console.log('✓ Captured streamlens-mobile.png (responsive mobile view)');
+
+    // 6. Reset viewport to desktop and capture animation frames for demo GIF
+    await page.setViewport({ width: 1280, height: 800 });
+    await new Promise((r) => setTimeout(r, 400));
+    console.log('4. Capturing animation frames for demo GIF...');
+    let frameIdx = 0;
+
+    // Frames 0-4: Overview Waterfall
+    for (let i = 0; i < 5; i++) {
       const framePath = path.join(framesDir, `frame_${String(frameIdx++).padStart(3, '0')}.png`);
       await page.screenshot({ path: framePath });
       await new Promise((r) => setTimeout(r, 80));
     }
 
-    // Switch back to Waterfall and trigger an active stream
+    // Switch to Request & Prompt
+    await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const reqBtn = buttons.find((b) => b.textContent?.includes('Request & Prompt'));
+      reqBtn?.click();
+    });
+    await new Promise((r) => setTimeout(r, 300));
+    for (let i = 0; i < 5; i++) {
+      const framePath = path.join(framesDir, `frame_${String(frameIdx++).padStart(3, '0')}.png`);
+      await page.screenshot({ path: framePath });
+      await new Promise((r) => setTimeout(r, 80));
+    }
+
+    // Switch to Tool Calls
+    await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const toolBtn = buttons.find((b) => b.textContent?.includes('Tool Calls'));
+      toolBtn?.click();
+    });
+    await new Promise((r) => setTimeout(r, 300));
+    for (let i = 0; i < 5; i++) {
+      const framePath = path.join(framesDir, `frame_${String(frameIdx++).padStart(3, '0')}.png`);
+      await page.screenshot({ path: framePath });
+      await new Promise((r) => setTimeout(r, 80));
+    }
+
+    // Switch back to Waterfall and trigger live streaming
     await page.evaluate(() => {
       const buttons = Array.from(document.querySelectorAll('button'));
       const waterBtn = buttons.find((b) => b.textContent?.includes('Token Waterfall'));
@@ -182,7 +237,7 @@ async function main() {
       messages: [{ role: 'user', content: 'Stream tool call' }]
     }).catch(() => {});
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 9; i++) {
       const framePath = path.join(framesDir, `frame_${String(frameIdx++).padStart(3, '0')}.png`);
       await page.screenshot({ path: framePath });
       await new Promise((r) => setTimeout(r, 120));
@@ -190,9 +245,9 @@ async function main() {
 
     console.log('5. Compiling animated demo GIF with ffmpeg...');
     const gifOutput = path.join(outDir, 'streamlens_demo.gif');
-    const ffmpegCmd = `ffmpeg -y -framerate 6 -i "${path.join(framesDir, 'frame_%03d.png')}" -vf "fps=8,scale=1000:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" "${gifOutput}"`;
+    const ffmpegCmd = `ffmpeg -y -framerate 6 -i "${path.join(framesDir, 'frame_%03d.png')}" -vf "fps=7,scale=1000:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" "${gifOutput}"`;
     execSync(ffmpegCmd, { stdio: 'inherit' });
-    console.log('Generated streamlens_demo.gif successfully!');
+    console.log('✓ Generated streamlens_demo.gif successfully!');
 
     // Cleanup frames directory
     fs.rmSync(framesDir, { recursive: true, force: true });

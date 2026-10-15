@@ -251,11 +251,11 @@ export const App: React.FC = () => {
         <MetricsSummary session={activeSession || undefined} />
 
         {/* View Tabs */}
-        <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2 gap-2">
-          <div className="flex flex-wrap items-center gap-1">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-2 gap-2">
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 max-w-full">
             <button
               onClick={() => setActiveTab('waterfall')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition ${
                 activeTab === 'waterfall'
                   ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -267,7 +267,7 @@ export const App: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('request')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition ${
                 activeTab === 'request'
                   ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -284,7 +284,7 @@ export const App: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('reasoning')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition ${
                 activeTab === 'reasoning'
                   ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -301,7 +301,7 @@ export const App: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('toolcalls')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition ${
                 activeTab === 'toolcalls'
                   ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -318,7 +318,7 @@ export const App: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('events')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition ${
                 activeTab === 'events'
                   ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -335,7 +335,7 @@ export const App: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('text')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition ${
                 activeTab === 'text'
                   ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -347,7 +347,7 @@ export const App: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('diff')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition ${
                 activeTab === 'diff'
                   ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -359,7 +359,7 @@ export const App: React.FC = () => {
           </div>
 
           {activeSession && (
-            <div className="text-[11px] font-mono text-slate-500 hidden md:block">
+            <div className="text-[11px] font-mono text-slate-500 truncate max-w-full">
               Target: <span className="text-slate-400">{activeSession.targetUrl}</span>
             </div>
           )}
